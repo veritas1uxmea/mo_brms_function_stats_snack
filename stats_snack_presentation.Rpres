@@ -1,0 +1,670 @@
+<style>
+body {
+    overflow: scroll;
+}
+</style>
+
+
+<style>
+.small-code pre code {
+  font-size: 1em;
+}
+</style>
+
+
+
+Ordinal predictors,   what to do? 
+========================================================
+author: Won Lee
+date: November 10th, 2020
+autosize: false
+font-family: 'Helvetica'
+
+Estimating Monotonic Effects with brms
+
+Index
+========================================================
+- Ordinal variable
+- why do we (have to) care about this?
+- Monotonic effects
+- Implementing mo() function in brms package in R
+- Interpret the results 
+
+All materials are located at [my github,](https://github.com/veritas1uxmea/mo_brms_function_stats_snack.git)
+and the slides can be found on [my website.](https://wonlee-neuroscientist.com/04_bioinfo.html)
+
+```{r setup, echo = FALSE}
+library(tidyverse)
+library(gganimate) 
+library(gifski)
+library(grid)
+library(brms)
+```
+
+
+```{r boxjitter, echo = FALSE}
+#' @rdname ggparl-extensions
+#' @format NULL
+#' @usage NULL
+#' @importFrom ggplot2 ggproto GeomBoxplot aes
+#' @importFrom grid grobTree
+#' @export
+GeomBoxJitter <- ggproto("GeomBoxJitter", GeomBoxplot,
+                         default_aes = aes(weight = 1, colour = "grey20", fill = "white", size = 0.5,
+                                           alpha = NA, shape = 19, linetype = "solid"),
+                         
+                         draw_group = function(data, panel_params, coord, fatten = 2,
+                                               outlier.colour = NULL, outlier.fill = NULL,
+                                               outlier.shape = 19,
+                                               outlier.size = 1.5, outlier.stroke = 0.5,
+                                               outlier.alpha = NULL,
+                                               jitter.colour = NULL, jitter.fill = NULL,
+                                               jitter.shape = 19, jitter.size = 1.5,
+                                               jitter.stroke = 0.5, jitter.alpha = NULL,
+                                               jitter.width = NULL, jitter.height = NULL,
+                                               jitter.seed = NULL,
+                                               notch = FALSE, notchwidth = 0.5, varwidth = FALSE,
+                                               errorbar.draw = FALSE, errorbar.length = 0.5) {
+                           
+                           
+                           xrange <- data$xmax - data$xmin
+                           
+                           common <- data.frame(
+                             colour = data$colour,
+                             size = data$size,
+                             linetype = data$linetype,
+                             fill = alpha(data$fill, data$alpha),
+                             group = data$group,
+                             stringsAsFactors = FALSE
+                           )
+                           
+                           whiskers <- data.frame(
+                             x = data$x,
+                             xend = data$x,
+                             y = c(data$upper, data$lower),
+                             yend = c(data$ymax, data$ymin),
+                             alpha = NA,
+                             common,
+                             stringsAsFactors = FALSE
+                           )
+                           
+                           if (errorbar.draw) {
+                             if (errorbar.length > 1 | errorbar.length < 0) {
+                               stop("Error bar length must be between 0 and 1.")
+                             }
+                             error_length_add <- ((data$xmin + xrange / 2) - data$xmin) * (1 - errorbar.length) #last term ^2 if want to do both sides 
+                             error_whiskers <- data.frame(
+                               x = data$xmin + error_length_add,
+                               xend = (data$xmin + xrange / 2),
+                               y = c(data$ymax, data$ymin),
+                               yend = c(data$ymax, data$ymin),
+                               alpha = NA,
+                               common,
+                               stringsAsFactors = FALSE
+                             )
+                             
+                             error_grob <- GeomSegment$draw_panel(error_whiskers, panel_params, coord)
+                           } else {
+                             error_grob <- NULL
+                           }
+                           
+                           box <- data.frame(
+                             xmin = data$xmin,
+                             xmax = data$xmin + xrange / 2,
+                             ymin = data$lower,
+                             y = data$middle,
+                             ymax = data$upper,
+                             ynotchlower = ifelse(notch, data$notchlower, NA),
+                             ynotchupper = ifelse(notch, data$notchupper, NA),
+                             notchwidth = notchwidth,
+                             alpha = data$alpha,
+                             common,
+                             stringsAsFactors = FALSE
+                           )
+                           
+                           jitter.width <- jitter.width %||% (data$xmax - (box$xmax + (data$xmax - box$xmax) / 1.75))
+                           jitter.height <- jitter.height %||% (
+                             resolution(data$jitter_y[[1]], zero = FALSE) * 0.4)
+                           
+                           jitter_df <- data.frame(
+                             width = jitter.width,
+                             height = jitter.height
+                           )
+                           
+                           if (!is.null(jitter.seed)) jitt_df$seed = jitter.seed
+                           
+                           jitter_positions <- PositionJitter$compute_layer(
+                             data.frame(x = box$xmax + (data$xmax - box$xmax) / 2,
+                                        y = data$jitter_y[[1]]),
+                             jitter_df
+                           )
+                           
+                           jitt <- data.frame(
+                             x = jitter_positions$x,
+                             y = jitter_positions$y,
+                             colour = jitter.colour %||% data$colour[1],
+                             fill = jitter.fill %||% data$fill[1],
+                             shape = jitter.shape %||% data$shape[1],
+                             size = jitter.size %||% data$size[1],
+                             stroke = jitter.stroke %||% data$stroke[1],
+                             fill = NA,
+                             alpha = jitter.alpha %||% data$alpha[1],
+                             stringsAsFactors = FALSE
+                           )
+                           
+                           if (!is.null(data$outliers) && length(data$outliers[[1]] >= 1)) {
+                             outliers <- data.frame(
+                               y = data$outliers[[1]],
+                               x = data$x[1],
+                               colour = outlier.colour %||% data$colour[1],
+                               fill = outlier.fill %||% data$fill[1],
+                               shape = outlier.shape %||% data$shape[1],
+                               size = outlier.size %||% data$size[1],
+                               stroke = outlier.stroke %||% data$stroke[1],
+                               fill = NA,
+                               alpha = outlier.alpha %||% data$alpha[1],
+                               stringsAsFactors = FALSE
+                             )
+                             outliers_grob <- GeomPoint$draw_panel(outliers, panel_params, coord)
+                           } else {
+                             outliers_grob <- NULL
+                           }
+                           
+                           ggplot2:::ggname("geom_boxjitter", grobTree(
+                             outliers_grob,
+                             error_grob,
+                             GeomPoint$draw_panel(jitt, panel_params, coord),
+                             GeomSegment$draw_panel(whiskers, panel_params, coord),
+                             GeomCrossbar$draw_panel(box, fatten = fatten, panel_params, coord)
+                           ))
+                         }
+)
+
+
+#' A hybrid boxplot. H
+
+#' Half boxplot, half scatterplot with jitter.
+#' @importFrom ggplot2 layer
+#' @inheritParams ggplot2::geom_boxplot
+#' @param jitter.colour,jitter.color,jitter.fill,jitter.shape,jitter.size,jitter.stroke,jitter.alpha
+#'   Default aesthetics for jitter, set to `NULL` to inherit from the aesthetics used for the box.
+#' @param jitter.width Width passed to position_jitter. Defaults to half the width of the boxplot.
+#' @param jitter.height Height passed to position_jitter. Defaults to 40 percent of the resolution.
+#' @param jitter.seed Seed passed to position_jitter for reproducible jittering.
+#' @param errorbar.draw Draw horizontal whiskers at the top and bottom (the IQR). Defaults to `FALSE`.
+#' @param errorbar.length Length of the horizontal whiskers (errorbar). Defaults to half the width of the half-boxplot.
+#' 
+#' @export
+geom_boxjitter <- function(mapping = NULL, data = NULL,
+                           stat = "BoxJitter", position = "dodge",
+                           ...,
+                           outlier.colour = NULL,
+                           outlier.color = NULL,
+                           outlier.fill = NULL,
+                           outlier.shape = 19,
+                           outlier.size = 1.5,
+                           outlier.stroke = 0.5,
+                           outlier.alpha = NULL,
+                           jitter.colour = NULL,
+                           jitter.color = NULL,
+                           jitter.fill = NULL,
+                           jitter.shape = 19,
+                           jitter.size = 1.5,
+                           jitter.stroke = 0.5,
+                           jitter.alpha = NULL,
+                           jitter.width = NULL,
+                           jitter.height = NULL,
+                           jitter.seed = NULL,
+                           notch = FALSE,
+                           notchwidth = 0.5,
+                           varwidth = FALSE,
+                           errorbar.draw = FALSE,
+                           errorbar.length = 0.5,
+                           na.rm = FALSE,
+                           show.legend = NA,
+                           inherit.aes = TRUE) {
+  layer(
+    data = data,
+    mapping = mapping,
+    stat = stat,
+    geom = GeomBoxJitter,
+    position = position,
+    show.legend = show.legend,
+    inherit.aes = inherit.aes,
+    params = list(
+      outlier.colour = outlier.color %||% outlier.colour,
+      outlier.fill = outlier.fill,
+      outlier.shape = outlier.shape,
+      outlier.size = outlier.size,
+      outlier.stroke = outlier.stroke,
+      outlier.alpha = outlier.alpha,
+      jitter.colour = jitter.color %||% jitter.colour,
+      jitter.fill = jitter.fill,
+      jitter.shape = jitter.shape,
+      jitter.size = jitter.size,
+      jitter.stroke = jitter.stroke,
+      jitter.alpha = jitter.alpha,
+      jitter.width = jitter.width,
+      jitter.height = jitter.height,
+      jitter.seed = jitter.seed,
+      notch = notch,
+      notchwidth = notchwidth,
+      varwidth = varwidth,
+      errorbar.draw = errorbar.draw,
+      errorbar.length = errorbar.length,
+      na.rm = na.rm,
+      ...
+    )
+  )
+}
+
+
+#' @importFrom ggplot2 ggproto Stat StatBoxplot
+StatBoxJitter <- ggproto("StatBoxJitter", Stat,
+                         required_aes = c("x", "y"),
+                         non_missing_aes = "weight",
+                         
+                         compute_group = function(data, scales, width = NULL, na.rm = FALSE, coef = 1.5) {
+                           df <- StatBoxplot$compute_group(data, scales, width, na.rm, coef)
+                           df$jitter_y <- list(data$y)
+                           df
+                         }
+)
+
+```
+
+
+What is ordinal factor 
+========================================================
+
+```{r, echo = FALSE, fig.align="center"}
+knitr::include_graphics('figures/datatype.png')
+```
+
+What is ordinal factor 
+========================================================
+```{r, echo = FALSE, fig.align="center"}
+knitr::include_graphics('figures/steps.png')
+```
+
+
+Sometimes the data you get is all you've got
+========================================================
+- Likert scale items 
+
+<small>Strongly Disagree, Disagree, Neutral, Agree, Strongly Agree</small>
+
+- When they ask you your annual income
+
+<small>Below 20K, 20-40K, 40-100K, greater than 100K</small>
+
+- How many meals in a week do you eat cheese?
+
+<small> 0-2 times, 3-5 times, 6-9 times, more than 10 times</small>
+
+
+Why do we have to care about this ...?
+========================================================
+Whoever studied animal behavior, might have had the same question:
+```{r, echo=FALSE}
+# devtools::install_github('rstudio/webshot2')
+# devtools::install_github("gadenbuie/tweetrmd")
+library(tweetrmd)
+tweet_screenshot(
+  tweet_url("tomhouslay", "1251155409521373184"),
+  maxwidth = 500,
+  hide_media = TRUE,
+  theme = "dark"
+)
+```
+
+========================================================
+so someone replied...:
+```{r, echo=FALSE}
+include_tweet(
+  tweet_url("jalapic", "1251246250839674881"),
+  maxwidth = 500,
+  hide_media = FALSE,
+  theme = "dark"
+)
+```
+
+
+
+### We should not assume the "equidistance" when it comes to ordinal predictors
+========================================================
+Equidistance refers to intervals with values that are distributed in equal units. 
+
+When we treat an ordinal predictor as numeric, the models will assume the 'equidistance' of the given variable
+
+Know your data!! 
+
+
+For example, 
+========================================================
+```{r, echo = F}
+robj <- readRDS("glick.RDS")
+
+mycolors=c("black", "grey", "orange", "red")
+ltypes=c(1,2,3,1,2,3,1,2,3,1)
+thetitle=""
+linewd=1
+ylim1=1500
+ylim2=3330
+ndays=1
+
+  x<-as.data.frame(unlist(robj$history))  
+  n <- length(x)/4
+  
+  x.ratings<-x[,1:n]
+  x.deviations<-x[,(1+n):(n+n)]
+  
+  #longform the data
+  x.ratingsmelt<-reshape2::melt(x.ratings)
+  
+  ids<-rownames(x.ratings)       #to make id column
+  x.ratingsmelt$ids<-rep(ids, n)  #making id column
+  
+  l.ids<-length(ids)
+  x.ratingsmelt$event<-rep(1:n, each=l.ids) 
+  
+  
+  #add ranks
+  xrn<-as.data.frame(x.ratings[n])
+  colnames(xrn)<-c("finalrating")
+  
+  x.ratingsmelt$rank<-rank(-xrn$finalrating, ties.method="random")
+  
+  #make ids1 a factor with levels defined by rank
+  x.ratingsmelt1 <- data.frame(ids=unique(x.ratingsmelt$ids),rank=unique(x.ratingsmelt$rank))
+  x.ratingsmelt1 <- x.ratingsmelt1[order(x.ratingsmelt1$rank),]
+  x.ratingsmelt$ids1 <- factor(x.ratingsmelt$ids,levels=x.ratingsmelt1$ids)
+  
+  #define color palette, multiple options (see below)
+  colourCount <-length(unique(x.ratingsmelt$ids))
+  getPalette = colorRampPalette(mycolors)
+  
+  
+  ### now plot using ids1 instead of ids.
+p1<-ggplot(x.ratingsmelt, aes(x = event, y = value, col=ids1, linetype=ids1)) +
+    scale_colour_manual(values = getPalette(colourCount)) +
+    scale_linetype_manual(values=ltypes) +
+    ylab("Glicko Rating") +
+    xlab("Agonistic interaction event") +
+    ggtitle(thetitle)+
+    ylim(ylim1,ylim2)+
+    geom_line(lwd = linewd) +
+    theme_classic(base_size = 19)+
+    theme( legend.position = "none")
+
+plt <- p1+transition_reveal(event)
+
+plt <- p1+
+  geom_label(aes(label = rank),size = 10)+
+  transition_reveal(event)+
+  view_step(pause_length = 5,
+            step_length = 2,
+            nsteps = 3)
+final_animation <-
+  animate(plt,100,fps = 5,duration = 20, width = 1200, height = 550, renderer = gifski_renderer())
+
+pltx <- p1+
+  geom_label(aes(label = rank),size = 10)+
+  transition_reveal(event)+
+  view_follow(fixed_x = TRUE)
+final_animationx <-
+  animate(pltx,100,fps = 5,duration = 12, width = 1200, height = 550, renderer = gifski_renderer(loop = F))
+
+final_animationx
+```
+
+
+Modelling monotonic effects
+========================================================
+> In many practical settings, we do often expect the changes between adjacent categories to be monotonic, that is, consistently negative or positive across the full range of the ordinal variable 
+
+> Burkner & Charpentier (2020)
+
+========================================================
+[Jimenez and Mesoudi (2020)](https://brill.com/view/journals/jocc/20/3-4/article-p238_4.xml)
+
+```{r, echo=FALSE}
+knitr::include_graphics('figures/jimenez_et_all_2020_fig4.jpg')
+```
+
+========================================================
+[Jimenez and Mesoudi (2020)](https://brill.com/view/journals/jocc/20/3-4/article-p238_4.xml)
+```{r, echo=FALSE}
+knitr::include_graphics('figures/jimenez_et_all_2020_tab2.jpg')
+```
+
+========================================================
+[Williamson et al., (2019)](https://www.nature.com/articles/s41598-019-43747-w)
+```{r, echo=FALSE}
+knitr::include_graphics('figures/female_fig4.png')
+```
+
+
+Let's try it out
+========================================================
+class: small-code
+- Annual income: Likert scale itmes
+- Life satisfaction: Scale from 0 to 100 
+
+Full tutorial [here](https://cran.r-project.org/web/packages/brms/vignettes/brms_monotonic.html)
+```{r}
+income_options <- c("below_20", "20_to_40", "40_to_100", "greater_100")
+income <- factor(sample(income_options, 100, TRUE), 
+                  levels = income_options, ordered = TRUE)
+mean_ls <- c(30, 60, 70, 75)
+ls <- mean_ls[income] + rnorm(100, sd = 7)
+dat <- data.frame(income, ls)
+```
+
+Plot it first!
+========================================================
+```{r, echo = F, fig.width = 10}
+dat %>% 
+  ggplot(aes(income,ls, color = income, fill = income))+
+  geom_boxjitter(
+    outlier.color = NA, 
+    jitter.size = 7,
+    jitter.shape = 21, 
+    jitter.color = NA,
+    alpha = 0.3,
+    jitter.height = 0.02, 
+    jitter.width = 0.12, 
+    errorbar.draw = TRUE,
+    position = position_dodge(0.85)) +
+  scale_color_brewer(palette = "Dark2")+
+  scale_fill_brewer(palette = "Dark2")+
+  theme_minimal(base_size =24)+
+  theme(legend.position = "none") +
+  labs(x = "Annual income",
+       y = "Life satisfaction")
+
+```
+
+Monotonic model 
+========================================================
+class: small-code
+```{r}
+fit1 <- brm(ls ~ mo(income), 
+            # mo() for monotonic effect
+            data = dat,
+            file = "fit1.RDS") 
+# saves file so we don't have to run this model every time
+```
+
+Monotonic model 
+========================================================
+class: small-code
+```{r}
+summary(fit1)
+```
+
+Monotonic model 
+========================================================
+class: small-code
+```{r}
+plot(conditional_effects(fit1)) 
+```
+
+Treat income to be continuous
+========================================================
+class: small-code
+```{r}
+dat$income_num <- as.numeric(dat$income)
+fit2 <- brm(ls ~ income_num, 
+            data = dat,
+            file = "fit2.RDS")
+```
+
+Treat income to be continuous
+========================================================
+class: small-code
+```{r}
+summary(fit2)
+```
+
+Treat income to be continuous
+========================================================
+class: small-code
+```{r}
+plot(conditional_effects(fit2))
+```
+
+Treat income as an unordered factor
+========================================================
+class: small-code
+```{r}
+contrasts(dat$income) <- contr.treatment(4)
+contrasts(dat$income)
+fit3 <- brm(ls ~ income, 
+            data = dat,
+            file = "fit3.RDS")
+```
+
+Treat income as an unordered factor
+========================================================
+class: small-code
+```{r}
+summary(fit3)
+```
+
+Treat income as an unordered factor
+========================================================
+class: small-code
+```{r}
+plot(conditional_effects(fit3))
+```
+
+Model comparison
+========================================================
+class: small-code
+Leave-one-out cross validation (LOO)
+- expected log posterior predictive density (ELPD) difference
+```{r}
+loo(fit1, fit2, fit3) -> loo_result
+loo_result$diffs
+loo_compare(loo(fit1), loo(fit2), loo(fit3))
+```
+
+Okay, then how do I interpret the results?
+========================================================
+class: small-code
+```{r}
+summary(fit1)
+```
+
+
+
+Always be careful when building models
+========================================================
+### It all depends on what questions you are asking. 
+
+### If you think it's possible you'll see a u-shaped effect, do not use monotonic effect model (or test both)
+
+```{r}
+knitr::include_graphics('figures/kundakovic.png')
+```
+
+
+Thank you! Any questions?
+========================================================
+class: small-code
+Resources:
+https://xcelab.net/rm/statistical-rethinking/
+https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/
+
+
+
+```{r}
+sessionInfo()
+```
+
+My own data example 
+========================================================
+class: small-code
+```{r}
+pcr_df <- readRDS("mup_paper_pcr.RDS")
+head(pcr_df)
+table(pcr_df$rank)
+pcr_df <- pcr_df %>% 
+  mutate(social_status = ifelse(rank == 1, "Alpha",
+  mutate(social_status = factor(social_status, ordered = T))
+levels(pcr_df$social_status)
+```
+
+========================================================
+class: small-code
+```{r}
+pcr_df %>% 
+  ggplot(aes(rank, mup20))+
+  geom_point(size = 7, shape = 21) + 
+  geom_smooth(method = "lm")+
+  theme_minimal(base_size = 24)
+```
+
+========================================================
+class: small-code
+```{r, echo = FALSE}
+pcr_df %>% 
+  ggplot(aes(social_status, mup20, color = social_status, fill = social_status))+
+  geom_boxjitter(
+    outlier.color = NA, 
+    jitter.size = 7,
+    jitter.shape = 21, 
+    jitter.color = NA,
+    alpha = 0.3,
+    jitter.height = 0.02, 
+    jitter.width = 0.12, 
+    errorbar.draw = TRUE,
+    position = position_dodge(0.85)) +
+  scale_color_brewer(palette = "Dark2")+
+  scale_fill_brewer(palette = "Dark2")+
+  theme_minimal(base_size =24)+
+  theme(legend.position = "none") +
+  labs(x = "Social status",
+       y = "Mup20 gene expression")
+  
+```
+
+========================================================
+class: small-code
+```{r}
+mup_fit1 <- brm(mup20 ~ mo(social_status),
+                data = pcr_df,
+                file = "mup_fit1.RDS")
+
+mup_fit2 <- brm(mup20 ~ as.numeric(rank),
+                data = pcr_df,
+                file = "mup_fit2.RDS")
+
+loo_compare(loo(mup_fit1), loo(mup_fit2))
+```
+
+```{r}
+plot(conditional_effects(mup_fit1))
+```
+
