@@ -13,22 +13,24 @@ body {
 
 
 
-Ordinal predictors,   what to do? 
+Ordinal variables,        what to do? 
 ========================================================
 author: Won Lee
 date: November 10th, 2020
 autosize: false
 font-family: 'Helvetica'
 
-Estimating Monotonic Effects with brms
+Modeling ordinal variables with brms package in R
 
 Index
 ========================================================
-- Ordinal variable
+- Ordinal variables
 - why do we (have to) care about this?
-- Monotonic effects
-- Implementing mo() function in brms package in R
-- Interpret the results 
+- Ordinal predictor variables: Modelling monotonic effects
+- Use and interpretation of `mo()` function
+- Ordinal outcome variables
+- Use and interpretation of `cumulative()` function
+
 
 All materials are located at [my github,](https://github.com/veritas1uxmea/mo_brms_function_stats_snack.git)
 and the slides can be found on [my website.](https://wonlee-neuroscientist.com/04_bioinfo.html)
@@ -39,6 +41,9 @@ library(gganimate)
 library(gifski)
 library(grid)
 library(brms)
+
+knitr::opts_chunk$set(cache = TRUE, fig.align = "center")
+
 ```
 
 
@@ -277,19 +282,27 @@ StatBoxJitter <- ggproto("StatBoxJitter", Stat,
 What is ordinal factor 
 ========================================================
 
-```{r, echo = FALSE, fig.align="center"}
+```{r, echo = FALSE}
 knitr::include_graphics('figures/datatype.png')
 ```
 
 What is ordinal factor 
 ========================================================
-```{r, echo = FALSE, fig.align="center"}
+```{r, echo = FALSE}
 knitr::include_graphics('figures/steps.png')
 ```
 
 
 Sometimes the data you get is all you've got
 ========================================================
+- Social rank, social status 
+
+<small>Alpha, subdominant, Subordinate</small>
+
+- Drug doses 
+
+<small>Vehicle, 2ug, 20ug, 200ug</small>
+
 - Likert scale items 
 
 <small>Strongly Disagree, Disagree, Neutral, Agree, Strongly Agree</small>
@@ -331,13 +344,15 @@ include_tweet(
 
 
 
-### We should not assume the "equidistance" when it comes to ordinal predictors
+We should not assume 
 ========================================================
-Equidistance refers to intervals with values that are distributed in equal units. 
+the "equidistance" when it comes to ordinal variables
+
+<small>Equidistance refers to intervals with values that are distributed in equal units. 
 
 When we treat an ordinal predictor as numeric, the models will assume the 'equidistance' of the given variable
 
-Know your data!! 
+Know your data!! </small>
 
 
 For example, 
@@ -353,38 +368,38 @@ ylim1=1500
 ylim2=3330
 ndays=1
 
-  x<-as.data.frame(unlist(robj$history))  
+  x<-as.data.frame(unlist(robj$history))
   n <- length(x)/4
-  
+
   x.ratings<-x[,1:n]
   x.deviations<-x[,(1+n):(n+n)]
-  
+
   #longform the data
   x.ratingsmelt<-reshape2::melt(x.ratings)
-  
+
   ids<-rownames(x.ratings)       #to make id column
   x.ratingsmelt$ids<-rep(ids, n)  #making id column
-  
+
   l.ids<-length(ids)
-  x.ratingsmelt$event<-rep(1:n, each=l.ids) 
-  
-  
+  x.ratingsmelt$event<-rep(1:n, each=l.ids)
+
+
   #add ranks
   xrn<-as.data.frame(x.ratings[n])
   colnames(xrn)<-c("finalrating")
-  
+
   x.ratingsmelt$rank<-rank(-xrn$finalrating, ties.method="random")
-  
+
   #make ids1 a factor with levels defined by rank
   x.ratingsmelt1 <- data.frame(ids=unique(x.ratingsmelt$ids),rank=unique(x.ratingsmelt$rank))
   x.ratingsmelt1 <- x.ratingsmelt1[order(x.ratingsmelt1$rank),]
   x.ratingsmelt$ids1 <- factor(x.ratingsmelt$ids,levels=x.ratingsmelt1$ids)
-  
+
   #define color palette, multiple options (see below)
   colourCount <-length(unique(x.ratingsmelt$ids))
   getPalette = colorRampPalette(mycolors)
-  
-  
+
+
   ### now plot using ids1 instead of ids.
 p1<-ggplot(x.ratingsmelt, aes(x = event, y = value, col=ids1, linetype=ids1)) +
     scale_colour_manual(values = getPalette(colourCount)) +
@@ -413,17 +428,25 @@ pltx <- p1+
   transition_reveal(event)+
   view_follow(fixed_x = TRUE)
 final_animationx <-
-  animate(pltx,100,fps = 5,duration = 12, width = 1200, height = 550, renderer = gifski_renderer(loop = F))
+  animate(pltx,100,fps = 5,duration = 7, width = 1200, height = 550, renderer = gifski_renderer(loop = F))
 
 final_animationx
 ```
 
 
-Modelling monotonic effects
+Ordinal predictor variables 
 ========================================================
+Modelling monotonic effects
 > In many practical settings, we do often expect the changes between adjacent categories to be monotonic, that is, consistently negative or positive across the full range of the ordinal variable 
 
 > Burkner & Charpentier (2020)
+
+
+========================================================
+[Williamson et al., (2019)](https://www.nature.com/articles/s41598-019-43747-w)
+```{r, echo=FALSE}
+knitr::include_graphics('figures/female_fig4.png')
+```
 
 ========================================================
 [Jimenez and Mesoudi (2020)](https://brill.com/view/journals/jocc/20/3-4/article-p238_4.xml)
@@ -438,11 +461,6 @@ knitr::include_graphics('figures/jimenez_et_all_2020_fig4.jpg')
 knitr::include_graphics('figures/jimenez_et_all_2020_tab2.jpg')
 ```
 
-========================================================
-[Williamson et al., (2019)](https://www.nature.com/articles/s41598-019-43747-w)
-```{r, echo=FALSE}
-knitr::include_graphics('figures/female_fig4.png')
-```
 
 
 Let's try it out
@@ -499,9 +517,11 @@ fit1 <- brm(ls ~ mo(income),
 Monotonic model 
 ========================================================
 class: small-code
+see if we have 'healthy' posterior chains
 ```{r}
-summary(fit1)
+plot(fit1) 
 ```
+
 
 Monotonic model 
 ========================================================
@@ -524,13 +544,6 @@ Treat income to be continuous
 ========================================================
 class: small-code
 ```{r}
-summary(fit2)
-```
-
-Treat income to be continuous
-========================================================
-class: small-code
-```{r}
 plot(conditional_effects(fit2))
 ```
 
@@ -545,12 +558,6 @@ fit3 <- brm(ls ~ income,
             file = "fit3.RDS")
 ```
 
-Treat income as an unordered factor
-========================================================
-class: small-code
-```{r}
-summary(fit3)
-```
 
 Treat income as an unordered factor
 ========================================================
@@ -567,7 +574,8 @@ Leave-one-out cross validation (LOO)
 ```{r}
 loo(fit1, fit2, fit3) -> loo_result
 loo_result$diffs
-loo_compare(loo(fit1), loo(fit2), loo(fit3))
+# loo_compare(loo(fit1), loo(fit2), loo(fit3))
+# will give you the same result as above
 ```
 
 Okay, then how do I interpret the results?
@@ -578,30 +586,173 @@ summary(fit1)
 ```
 
 
-
 Always be careful when building models
 ========================================================
-### It all depends on what questions you are asking. 
+It all depends on what questions you are asking. 
 
-### If you think it's possible you'll see a u-shaped effect, do not use monotonic effect model (or test both)
+If you think it's possible you'll see a u-shaped effect, do not use monotonic effect model (or test both)
+
+```{r, echo = F}
+knitr::include_graphics('figures/kundakovic.png')
+```
+
+
+Ordinal outcome variables
+========================================================
+class: small-code
+- Obesity: "normal", "overweight" and "obese"
+
+Predict obesity level based on age, gender, and level of physical activity, etc.
+
+- My example: does corticosterone hormone level prior to social hierarchy formation predict social rank? 
+```{r, echo = F, fig.height =5}
+knitr::include_graphics('figures/mlr.png')
+```
+
+
+
+Ordinal outcome variables
+========================================================
+Burkner & Vuorre (2019)[]
+```{r, echo = F}
+knitr::include_graphics('figures/box1.png')
+```
+
+
+
+Example from Burkner & Vuorre (2019)
+========================================================
+class: small-code
+```{r}
+stemcell <- readRDS('stemcell.RDS') # from https://osf.io/9ekxw/
+head(stemcell)
+str(stemcell)
+```
+
+Plot it first 
+========================================================
+class: small-code
+```{r, fig.height= 5, echo = F}
+stemcell %>% 
+  group_by(belief, rating) %>%
+  summarize (count = n()) %>%
+  ggplot(aes(belief,count,color = as.factor(rating), fill = as.factor(rating))) +
+  geom_bar(stat = 'identity', position=position_dodge(),
+           alpha = 0.4)+
+  theme_minimal(base_size = 24)+
+  labs(x = "Belief",
+       y = "",
+       color = "Rating",
+       fill = "Rating")+
+  theme(legend.position = "top")
+```
+
+
+========================================================
+class: small-code
+We know it's not a bad idea but let's do it to see how bad it is
+```{r}
+fit_sc_metric <- brm(
+  formula = rating ~ 1 + belief,
+  data = stemcell,
+  file = "fit_sc_metric.RDS")
+```
+
+
+========================================================
+class: small-code
+```{r}
+# cumulative model
+fit_sc_cumulative <- brm(
+  formula = rating ~ 1 + belief,
+  data = stemcell,
+  family = cumulative("probit"),
+  file = "fit_sc_cumulative.RDS")
+
+# adjacent model - category specific effect 
+fit_sc_acat <- brm(
+  formula = rating ~ 1 + cs(belief),
+  data = stemcell,
+  family = acat("probit"),
+  file = "fit_sc_acat.RDS")
+```
+
+
+========================================================
+class: small-code
+```{r}
+plot(conditional_effects(fit_sc_cumulative, categorical = T))
+```
+
+
+========================================================
+class: small-code
+```{r}
+plot(conditional_effects(fit_sc_acat, categorical = T))
+```
+
+Model comparison
+========================================================
+class: small-code
 
 ```{r}
-knitr::include_graphics('figures/kundakovic.png')
+loo(fit_sc_metric, fit_sc_cumulative, fit_sc_acat) -> loo_result_sc
+loo_result_sc$diffs
+```
+
+
+========================================================
+class: small-code
+```{r}
+summary(fit_sc_cumulative)
+```
+
+========================================================
+class: small-code
+```{r}
+summary(fit_sc_acat)
 ```
 
 
 Thank you! Any questions?
 ========================================================
 class: small-code
-Resources:
-https://xcelab.net/rm/statistical-rethinking/
-https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/
+
+More resources
+[Monotonic effects vignette](https://cran.r-project.org/web/packages/brms/vignettes/brms_monotonic.html)
+[Burkner & Vuorre (2019) repository](https://osf.io/9ekxw/)
+[McEleath's statistical thinking](https://xcelab.net/rm/statistical-rethinking/)
+[Above all in tidyvese and brms!!!! ](https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/)
 
 
 
 ```{r}
 sessionInfo()
 ```
+
+
+Monotonic model 
+========================================================
+class: small-code
+```{r}
+summary(fit1)
+```
+
+Treat income to be continuous
+========================================================
+class: small-code
+```{r}
+summary(fit2)
+```
+
+
+Treat income as an unordered factor
+========================================================
+class: small-code
+```{r}
+summary(fit3)
+```
+
 
 My own data example 
 ========================================================
@@ -612,8 +763,8 @@ head(pcr_df)
 table(pcr_df$rank)
 pcr_df <- pcr_df %>% 
   mutate(social_status = ifelse(rank == 1, "Alpha",
+                                ifelse(rank < 5, "Subdominant" , "Subordinate"))) %>% 
   mutate(social_status = factor(social_status, ordered = T))
-levels(pcr_df$social_status)
 ```
 
 ========================================================
@@ -662,8 +813,9 @@ mup_fit2 <- brm(mup20 ~ as.numeric(rank),
                 file = "mup_fit2.RDS")
 
 loo_compare(loo(mup_fit1), loo(mup_fit2))
+# actually glad to see elpd difference is very minimal for this dataset...
 ```
-
+========================================================
 ```{r}
 plot(conditional_effects(mup_fit1))
 ```
