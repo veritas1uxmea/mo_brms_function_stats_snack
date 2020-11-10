@@ -317,7 +317,7 @@ Predict obesity level based on age, gender, and level of physical activity, etc.
 
 Ordinal outcome variables
 ========================================================
-Burkner & Vuorre (2019)[]
+[Burkner & Vuorre (2019)](https://journals.sagepub.com/doi/10.1177/2515245918823199)
 <img src="figures/box1.png" title="plot of chunk unnamed-chunk-22" alt="plot of chunk unnamed-chunk-22" style="display: block; margin: auto;" />
 
 
@@ -518,11 +518,14 @@ Thank you! Any questions?
 class: small-code
 
 More resources
-[Monotonic effects vignette](https://cran.r-project.org/web/packages/brms/vignettes/brms_monotonic.html)
-[Burkner & Vuorre (2019) repository](https://osf.io/9ekxw/)
-[McEleath's statistical thinking](https://xcelab.net/rm/statistical-rethinking/)
-[Above all in tidyvese and brms!!!! ](https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/)
 
+[Monotonic effects vignette](https://cran.r-project.org/web/packages/brms/vignettes/brms_monotonic.html)
+
+[Burkner & Vuorre (2019) repository](https://osf.io/9ekxw/)
+
+[McEleath's statistical thinking](https://xcelab.net/rm/statistical-rethinking/)
+
+[Above all in tidyvese and brms!!!! ](https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/)
 
 
 
