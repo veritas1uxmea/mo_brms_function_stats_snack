@@ -4,16 +4,13 @@ body {
 }
 </style>
 
-
 <style>
-.small-code pre code {
-  font-size: 1em;
+head {
+  font-size: 2px;
 }
 </style>
 
-
-
-Ordinal variables,        what to do? 
+Ordinal variables,               what to do? 
 ========================================================
 author: Won Lee
 date: November 10th, 2020
@@ -592,6 +589,7 @@ It all depends on what questions you are asking.
 
 If you think it's possible you'll see a u-shaped effect, do not use monotonic effect model (or test both)
 
+<small>[Kundakovic et al., 2013. PNAS](https://www.pnas.org/content/110/24/9956)</small>
 ```{r, echo = F}
 knitr::include_graphics('figures/kundakovic.png')
 ```
@@ -647,10 +645,19 @@ stemcell %>%
   theme(legend.position = "top")
 ```
 
+We should use
+========================================================
+class: small-code
+
+`family = cumulative("probit")` `<-` this one
+
+`family = acat("probit")`
+
+`family = sratio("cloglog")`
 
 ========================================================
 class: small-code
-We know it's not a bad idea but let's do it to see how bad it is
+We know it's a bad idea but let's do it to see how bad it is
 ```{r}
 fit_sc_metric <- brm(
   formula = rating ~ 1 + belief,
@@ -658,23 +665,15 @@ fit_sc_metric <- brm(
   file = "fit_sc_metric.RDS")
 ```
 
-
+Use cumulative() family function
 ========================================================
 class: small-code
 ```{r}
-# cumulative model
 fit_sc_cumulative <- brm(
   formula = rating ~ 1 + belief,
   data = stemcell,
   family = cumulative("probit"),
   file = "fit_sc_cumulative.RDS")
-
-# adjacent model - category specific effect 
-fit_sc_acat <- brm(
-  formula = rating ~ 1 + cs(belief),
-  data = stemcell,
-  family = acat("probit"),
-  file = "fit_sc_acat.RDS")
 ```
 
 
@@ -685,18 +684,12 @@ plot(conditional_effects(fit_sc_cumulative, categorical = T))
 ```
 
 
-========================================================
-class: small-code
-```{r}
-plot(conditional_effects(fit_sc_acat, categorical = T))
-```
-
 Model comparison
 ========================================================
 class: small-code
 
 ```{r}
-loo(fit_sc_metric, fit_sc_cumulative, fit_sc_acat) -> loo_result_sc
+loo(fit_sc_metric, fit_sc_cumulative) -> loo_result_sc
 loo_result_sc$diffs
 ```
 
@@ -705,12 +698,6 @@ loo_result_sc$diffs
 class: small-code
 ```{r}
 summary(fit_sc_cumulative)
-```
-
-========================================================
-class: small-code
-```{r}
-summary(fit_sc_acat)
 ```
 
 
@@ -724,9 +711,11 @@ More resources
 
 [Burkner & Vuorre (2019) repository](https://osf.io/9ekxw/)
 
-[McEleath's statistical thinking](https://xcelab.net/rm/statistical-rethinking/)
+[Paul Burkner's website](https://paul-buerkner.github.io/publications/)
 
-[Above all in tidyvese and brms!!!! ](https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/)
+[MEleath's Statistical Rethinking](https://xcelab.net/rm/statistical-rethinking/)
+
+[Statistical Rethinking in tidyvese and brms!!!! ](https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/)
 
 
 ```{r}
@@ -818,6 +807,7 @@ mup_fit2 <- brm(mup20 ~ as.numeric(rank),
 loo_compare(loo(mup_fit1), loo(mup_fit2))
 # actually glad to see elpd difference is very minimal for this dataset...
 ```
+
 ========================================================
 ```{r}
 plot(conditional_effects(mup_fit1))

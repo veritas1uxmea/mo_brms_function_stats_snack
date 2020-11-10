@@ -4,16 +4,13 @@ body {
 }
 </style>
 
-
 <style>
-.small-code pre code {
-  font-size: 1em;
+head {
+  font-size: 2px;
 }
 </style>
 
-
-
-Ordinal variables,        what to do? 
+Ordinal variables,               what to do? 
 ========================================================
 author: Won Lee
 date: November 10th, 2020
@@ -300,6 +297,7 @@ It all depends on what questions you are asking.
 
 If you think it's possible you'll see a u-shaped effect, do not use monotonic effect model (or test both)
 
+<small>[Kundakovic et al., 2013. PNAS](https://www.pnas.org/content/110/24/9956)</small>
 <img src="figures/kundakovic.png" title="plot of chunk unnamed-chunk-20" alt="plot of chunk unnamed-chunk-20" style="display: block; margin: auto;" />
 
 
@@ -358,10 +356,19 @@ Plot it first
 class: small-code
 <img src="stats_snack_presentation-figure/unnamed-chunk-24-1.png" title="plot of chunk unnamed-chunk-24" alt="plot of chunk unnamed-chunk-24" style="display: block; margin: auto;" />
 
+We should use
+========================================================
+class: small-code
+
+`family = cumulative("probit")` `<-` this one
+
+`family = acat("probit")`
+
+`family = sratio("cloglog")`
 
 ========================================================
 class: small-code
-We know it's not a bad idea but let's do it to see how bad it is
+We know it's a bad idea but let's do it to see how bad it is
 
 ```r
 fit_sc_metric <- brm(
@@ -370,24 +377,16 @@ fit_sc_metric <- brm(
   file = "fit_sc_metric.RDS")
 ```
 
-
+Use cumulative() family function
 ========================================================
 class: small-code
 
 ```r
-# cumulative model
 fit_sc_cumulative <- brm(
   formula = rating ~ 1 + belief,
   data = stemcell,
   family = cumulative("probit"),
   file = "fit_sc_cumulative.RDS")
-
-# adjacent model - category specific effect 
-fit_sc_acat <- brm(
-  formula = rating ~ 1 + cs(belief),
-  data = stemcell,
-  family = acat("probit"),
-  file = "fit_sc_acat.RDS")
 ```
 
 
@@ -401,29 +400,19 @@ plot(conditional_effects(fit_sc_cumulative, categorical = T))
 <img src="stats_snack_presentation-figure/unnamed-chunk-27-1.png" title="plot of chunk unnamed-chunk-27" alt="plot of chunk unnamed-chunk-27" style="display: block; margin: auto;" />
 
 
-========================================================
-class: small-code
-
-```r
-plot(conditional_effects(fit_sc_acat, categorical = T))
-```
-
-<img src="stats_snack_presentation-figure/unnamed-chunk-28-1.png" title="plot of chunk unnamed-chunk-28" alt="plot of chunk unnamed-chunk-28" style="display: block; margin: auto;" />
-
 Model comparison
 ========================================================
 class: small-code
 
 
 ```r
-loo(fit_sc_metric, fit_sc_cumulative, fit_sc_acat) -> loo_result_sc
+loo(fit_sc_metric, fit_sc_cumulative) -> loo_result_sc
 loo_result_sc$diffs
 ```
 
 ```
                   elpd_diff se_diff
 fit_sc_cumulative   0.0       0.0  
-fit_sc_acat        -1.1       2.4  
 fit_sc_metric     -86.5      10.1  
 ```
 
@@ -466,52 +455,6 @@ and Tail_ESS are effective sample size measures, and Rhat is the potential
 scale reduction factor on split chains (at convergence, Rhat = 1).
 ```
 
-========================================================
-class: small-code
-
-```r
-summary(fit_sc_acat)
-```
-
-```
- Family: acat 
-  Links: mu = probit; disc = identity 
-Formula: rating ~ 1 + cs(belief) 
-   Data: stemcell (Number of observations: 829) 
-Samples: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
-         total post-warmup samples = 4000
-
-Population-Level Effects: 
-                        Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS
-Intercept[1]               -0.31      0.15    -0.62    -0.02 1.00     1935
-Intercept[2]               -0.73      0.10    -0.94    -0.53 1.00     1884
-Intercept[3]                0.40      0.09     0.22     0.57 1.00     2232
-belieffundamentalist[1]    -0.12      0.20    -0.50     0.27 1.00     2276
-belieffundamentalist[2]    -0.24      0.14    -0.52     0.04 1.00     2087
-belieffundamentalist[3]    -0.08      0.13    -0.34     0.17 1.00     2506
-beliefliberal[1]           -0.13      0.23    -0.58     0.33 1.00     2187
-beliefliberal[2]            0.07      0.16    -0.24     0.38 1.00     2282
-beliefliberal[3]            0.44      0.12     0.21     0.68 1.00     2381
-                        Tail_ESS
-Intercept[1]                2384
-Intercept[2]                2303
-Intercept[3]                2795
-belieffundamentalist[1]     2943
-belieffundamentalist[2]     2808
-belieffundamentalist[3]     2684
-beliefliberal[1]            2776
-beliefliberal[2]            2853
-beliefliberal[3]            2297
-
-Family Specific Parameters: 
-     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-disc     1.00      0.00     1.00     1.00 1.00     4000     4000
-
-Samples were drawn using sampling(NUTS). For each parameter, Bulk_ESS
-and Tail_ESS are effective sample size measures, and Rhat is the potential
-scale reduction factor on split chains (at convergence, Rhat = 1).
-```
-
 
 Thank you! Any questions?
 ========================================================
@@ -523,9 +466,11 @@ More resources
 
 [Burkner & Vuorre (2019) repository](https://osf.io/9ekxw/)
 
-[McEleath's statistical thinking](https://xcelab.net/rm/statistical-rethinking/)
+[Paul Burkner's website](https://paul-buerkner.github.io/publications/)
 
-[Above all in tidyvese and brms!!!! ](https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/)
+[MEleath's Statistical Rethinking](https://xcelab.net/rm/statistical-rethinking/)
+
+[Statistical Rethinking in tidyvese and brms!!!! ](https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/)
 
 
 
@@ -566,36 +511,35 @@ loaded via a namespace (and not attached):
  [16] lubridate_1.7.9      xml2_1.3.2           splines_4.0.3       
  [19] codetools_0.2-16     bridgesampling_1.0-0 shinythemes_1.1.2   
  [22] bayesplot_1.7.2      jsonlite_1.7.1       broom_0.7.2         
- [25] dbplyr_1.4.4         png_0.1-7            shiny_1.5.0         
- [28] compiler_4.0.3       httr_1.4.2           emmeans_1.5.1       
- [31] backports_1.1.10     assertthat_0.2.1     Matrix_1.2-18       
- [34] fastmap_1.0.1        cli_2.1.0            later_1.1.0.1       
- [37] tweenr_1.0.1         htmltools_0.5.0      prettyunits_1.1.1   
- [40] tools_4.0.3          igraph_1.2.6         coda_0.19-4         
- [43] gtable_0.3.0         glue_1.4.2           reshape2_1.4.4      
- [46] V8_3.2.0             cellranger_1.1.0     vctrs_0.3.4         
- [49] nlme_3.1-149         crosstalk_1.1.0.1    xfun_0.18           
- [52] ps_1.4.0             rvest_0.3.6          mime_0.9            
- [55] miniUI_0.1.1.1       lifecycle_0.2.0      gtools_3.8.2        
- [58] MASS_7.3-53          zoo_1.8-8            scales_1.1.1        
- [61] colourpicker_1.1.0   hms_0.5.3            promises_1.1.1      
- [64] Brobdingnag_1.2-6    sandwich_3.0-0       parallel_4.0.3      
- [67] inline_0.3.16        shinystan_2.5.0      curl_4.3            
- [70] gridExtra_2.3        StanHeaders_2.21.0-6 loo_2.3.1           
- [73] stringi_1.5.3        highr_0.8            dygraphs_1.1.1.6    
- [76] pkgbuild_1.1.0       rlang_0.4.8          pkgconfig_2.0.3     
- [79] matrixStats_0.57.0   evaluate_0.14        lattice_0.20-41     
- [82] labeling_0.4.2       rstantools_2.1.1     htmlwidgets_1.5.2   
- [85] tidyselect_1.1.0     processx_3.4.4       plyr_1.8.6          
- [88] magrittr_1.5         R6_2.5.0             generics_0.0.2      
- [91] multcomp_1.4-14      DBI_1.1.0            pillar_1.4.6        
- [94] haven_2.3.1          withr_2.3.0          xts_0.12.1          
- [97] survival_3.2-7       abind_1.4-5          modelr_0.1.8        
-[100] crayon_1.3.4         utf8_1.1.4           progress_1.2.2      
-[103] readxl_1.3.1         blob_1.2.1           callr_3.5.1         
-[106] threejs_0.3.3        reprex_0.3.0         digest_0.6.25       
-[109] xtable_1.8-4         httpuv_1.5.4         RcppParallel_5.0.2  
-[112] stats4_4.0.3         munsell_0.5.0        shinyjs_2.0.0       
+ [25] dbplyr_1.4.4         shiny_1.5.0          compiler_4.0.3      
+ [28] httr_1.4.2           emmeans_1.5.1        backports_1.1.10    
+ [31] assertthat_0.2.1     Matrix_1.2-18        fastmap_1.0.1       
+ [34] cli_2.1.0            later_1.1.0.1        tweenr_1.0.1        
+ [37] htmltools_0.5.0      prettyunits_1.1.1    tools_4.0.3         
+ [40] igraph_1.2.6         coda_0.19-4          gtable_0.3.0        
+ [43] glue_1.4.2           reshape2_1.4.4       V8_3.2.0            
+ [46] cellranger_1.1.0     vctrs_0.3.4          nlme_3.1-149        
+ [49] crosstalk_1.1.0.1    xfun_0.18            ps_1.4.0            
+ [52] rvest_0.3.6          mime_0.9             miniUI_0.1.1.1      
+ [55] lifecycle_0.2.0      gtools_3.8.2         MASS_7.3-53         
+ [58] zoo_1.8-8            scales_1.1.1         colourpicker_1.1.0  
+ [61] hms_0.5.3            promises_1.1.1       Brobdingnag_1.2-6   
+ [64] sandwich_3.0-0       parallel_4.0.3       inline_0.3.16       
+ [67] shinystan_2.5.0      curl_4.3             gridExtra_2.3       
+ [70] StanHeaders_2.21.0-6 loo_2.3.1            stringi_1.5.3       
+ [73] dygraphs_1.1.1.6     pkgbuild_1.1.0       rlang_0.4.8         
+ [76] pkgconfig_2.0.3      matrixStats_0.57.0   evaluate_0.14       
+ [79] lattice_0.20-41      rstantools_2.1.1     htmlwidgets_1.5.2   
+ [82] tidyselect_1.1.0     processx_3.4.4       plyr_1.8.6          
+ [85] magrittr_1.5         R6_2.5.0             generics_0.0.2      
+ [88] multcomp_1.4-14      DBI_1.1.0            pillar_1.4.6        
+ [91] haven_2.3.1          withr_2.3.0          xts_0.12.1          
+ [94] survival_3.2-7       abind_1.4-5          modelr_0.1.8        
+ [97] crayon_1.3.4         progress_1.2.2       readxl_1.3.1        
+[100] blob_1.2.1           callr_3.5.1          threejs_0.3.3       
+[103] reprex_0.3.0         digest_0.6.25        xtable_1.8-4        
+[106] httpuv_1.5.4         RcppParallel_5.0.2   stats4_4.0.3        
+[109] munsell_0.5.0        shinyjs_2.0.0       
 ```
 
 
@@ -746,11 +690,11 @@ pcr_df %>%
   theme_minimal(base_size = 24)
 ```
 
-<img src="stats_snack_presentation-figure/unnamed-chunk-37-1.png" title="plot of chunk unnamed-chunk-37" alt="plot of chunk unnamed-chunk-37" style="display: block; margin: auto;" />
+<img src="stats_snack_presentation-figure/unnamed-chunk-35-1.png" title="plot of chunk unnamed-chunk-35" alt="plot of chunk unnamed-chunk-35" style="display: block; margin: auto;" />
 
 ========================================================
 class: small-code
-<img src="stats_snack_presentation-figure/unnamed-chunk-38-1.png" title="plot of chunk unnamed-chunk-38" alt="plot of chunk unnamed-chunk-38" style="display: block; margin: auto;" />
+<img src="stats_snack_presentation-figure/unnamed-chunk-36-1.png" title="plot of chunk unnamed-chunk-36" alt="plot of chunk unnamed-chunk-36" style="display: block; margin: auto;" />
 
 ========================================================
 class: small-code
@@ -776,11 +720,12 @@ mup_fit2 -1.4       1.5
 ```r
 # actually glad to see elpd difference is very minimal for this dataset...
 ```
+
 ========================================================
 
 ```r
 plot(conditional_effects(mup_fit1))
 ```
 
-<img src="stats_snack_presentation-figure/unnamed-chunk-40-1.png" title="plot of chunk unnamed-chunk-40" alt="plot of chunk unnamed-chunk-40" style="display: block; margin: auto;" />
+<img src="stats_snack_presentation-figure/unnamed-chunk-38-1.png" title="plot of chunk unnamed-chunk-38" alt="plot of chunk unnamed-chunk-38" style="display: block; margin: auto;" />
 
